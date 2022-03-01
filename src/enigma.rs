@@ -7,9 +7,9 @@ mod reflector;
 #[path = "plugboard.rs"]
 mod plugboard;
 
-use std::collections::VecDeque;
 use std::collections::HashMap;
-use std::iter::FromIterator;
+use rand::Rng;
+use log::{debug, error, info, warn};
 
 pub struct Enigma {
     enigma_type: String,
@@ -27,6 +27,19 @@ impl PartialEq for Enigma {
     }
 }
 
+impl Clone for Enigma {
+    fn clone(&self) -> Enigma {
+        Self {
+            enigma_type: self.enigma_type.clone(),
+            rotor_ids: self.rotor_ids.clone(),
+            rotors: self.rotors.clone(),
+            rotor_labels: self.rotor_labels.clone(),
+            reflector: self.reflector.clone(),
+            plugboard: self.plugboard.clone()
+        }
+    }
+}
+
 impl Enigma {
     pub fn new(rotor_list: Vec::<i32>, reflector: char, enigma_type: String) -> Self {
         let mut rotors = HashMap::<String, rotor::Rotor>::new();
@@ -36,7 +49,7 @@ impl Enigma {
             if rotor_list.len() != 3 {
                 panic!("Three rotor types only must be provided for Enigma machine 'M3'");
             }
-    
+
             rotors.insert("left".to_string(), rotor::Rotors(rotor_list[0]));
             rotors.insert("middle".to_string(), rotor::Rotors(rotor_list[1]));
             rotors.insert("right".to_string(), rotor::Rotors(rotor_list[2]));
@@ -49,7 +62,6 @@ impl Enigma {
             if rotor_list.len() != 4 {
                 panic!("Three rotor types only must be provided for Enigma machine 'M4'");
             }
-
             rotors.insert("left".to_string(), rotor::Rotors(rotor_list[0]));
             rotors.insert("middle left".to_string(), rotor::Rotors(rotor_list[1]));
             rotors.insert("middle right".to_string(), rotor::Rotors(rotor_list[2]));
@@ -63,7 +75,7 @@ impl Enigma {
         else {
             panic!("Unrecognised Enigma type '{}'", enigma_type);
         }
-        
+
         Self {
             rotor_ids: rotor_list,
             rotors: rotors,
@@ -86,20 +98,21 @@ impl Enigma {
         }
     }
 
-    fn _move_rotor(mut self, rotor: &String, amount: i32) -> Self {
-        for _i in 0..amount {
+    fn _move_rotor(&mut self, rotor: &String, amount: i32) {
+        for i in 0..amount {
+            debug!("[{}] Rotating rotor {} by {}", i, rotor, amount);
             self.rotors.get_mut(rotor).unwrap().rotate(None);
         }
-        return self
     }
 
-    fn _set_rotor(mut self, rotor: &String, letter: char) -> Self {
+    fn _set_rotor(&mut self, rotor: &String, letter: char) {
+        debug!("Setting rotor {} to {}", rotor, letter);
         let mut face = self.rotors.get(rotor).unwrap().get_face_letter();
-        let curr_index = rotor::alpha_index(face);
-        let dest_index = rotor::alpha_index(letter);
-        let n_rotations = if dest_index > curr_index {dest_index-curr_index} else {26 - (curr_index-dest_index)};
 
-        self._move_rotor(rotor, n_rotations as i32)
+        while face  != letter {
+            self._move_rotor(rotor, 1);
+            face = self.rotors.get(rotor).unwrap().get_face_letter();
+        }
     }
 
     pub fn rotor_conv(&self, rotor: &String, letter: char) -> char {
@@ -128,110 +141,135 @@ impl Enigma {
         let zero_point_2 = rotor::alpha_index(self.rotors.get(rotor_2).unwrap().get_face_letter());
         let interval = zero_point_2 as i32 - zero_point_1 as i32;
 
-        let mut n = 0;
+        let n;
 
         if zero_point_2 > zero_point_1 {
-            const i: [i32; 26] = [0; 26];
+            let i: Vec<i32> = (0..26).collect();
             n = i[(terminal + interval as usize) % i.len()];
         }
         else {
-            const i: [i32; 26] = [0; 26];
+            let i: Vec<i32> = (0..26).collect();
             let index: i32 = 26 + terminal as i32 + interval as i32;
             n = i[(index as usize) % i.len()];
         }
+        println!("N: {}, {}", n, rotor::ALPHA[n as usize]);
 
-        rotor::ALPHA[n as usize]   
+        rotor::ALPHA[n as usize]
     }
 
-    fn ringstellung_rotor_(mut self, rotor: &String, amount: i32) -> Self {
+    fn ringstellung_rotor_(&mut self, rotor: &String, amount: i32) {
         for _i in 0..amount {
             self.rotors.get_mut(rotor).unwrap().rotate_inner_ring();
         }
-        self
     }
 
-    pub fn ringstellung(mut self, rsg_vec: Vec<i32>) -> Self {
+    pub fn ringstellung(&mut self, rsg_vec: Vec<i32>) {
         let rotor_labels = self.rotor_labels.clone();
         for i in 0..rsg_vec.len() {
-            self = self.ringstellung_rotor_(&rotor_labels[i], rsg_vec[i]);
+            self.ringstellung_rotor_(&rotor_labels[i], rsg_vec[i]);
         }
-        self
     }
 
-    pub fn type_letter(mut self, mut letter: char) -> char {
+    pub fn type_letter(&mut self, letter: char) -> char {
         let upper_l = letter.to_ascii_uppercase();
-        let rotor_labels: Vec<String> = self.rotors.keys().cloned().collect();
-        let mut reversed = VecDeque::from_iter(&rotor_labels);
-        let mut reversed_1 = VecDeque::from_iter(&rotor_labels);
-        let mut reversed_2 = VecDeque::from_iter(&rotor_labels);
 
-        reversed_2.pop_back();
-        reversed_1.pop_front();
+        let mut cipher_af = self.plugboard.convert(upper_l);
+        debug!("Plugboard: {} -> {}", upper_l, cipher_af);
 
-        let mut cipher = self.plugboard.convert(upper_l);
+        let rotor_labels = self.rotor_labels.clone();
+
+        let (_, offset_1) = rotor_labels.split_at(1);
+        let (offset_2, _) = rotor_labels.split_at(self.rotor_labels.len()-1);
 
         let mut notch_dict = HashMap::<String, Vec<char>>::new();
         let mut face_letters = HashMap::<String, char>::new();
 
-        for i in 0..rotor_labels.len() {
-            notch_dict.insert(rotor_labels[i].clone(), self.rotors.get(&rotor_labels[i]).unwrap().get_notches());
-            face_letters.insert(rotor_labels[i].clone(), self.rotors.get(&rotor_labels[i]).unwrap().get_face_letter());
+        for rotor_label in self.rotor_labels.clone() {
+            notch_dict.insert(rotor_label.clone(), self.rotors.get(&rotor_label).unwrap().get_notches());
+            face_letters.insert(rotor_label.clone(), self.rotors.get(&rotor_label).unwrap().get_face_letter());
         }
 
-        for i in 0..reversed_1.len() {
-            let notches = notch_dict.get(&rotor_labels[i]).unwrap();
+        for rotors in offset_1.iter().rev().zip(offset_2.iter().rev()) {
+            let (rotor_1, rotor_2) = rotors;
+            let notches = notch_dict.get(&rotor_1.clone()).unwrap();
             for notch in notches {
-                if &face_letters[reversed_1[i]] == notch {
-                    self = self._move_rotor(reversed_2[i], 1);
+                if face_letters[&rotor_1.clone()] == *notch {
+                    self._move_rotor(&rotor_2.clone(), 1);
                 }
             }
         }
 
-        self = self._move_rotor(&rotor_labels[rotor_labels.len()-1], 1);
+        self._move_rotor(&self.rotor_labels.clone()[&self.rotor_labels.len()-1], 1);
 
-        for i in 0..reversed.len() {
-            cipher = self.rotor_conv(reversed[i], cipher);
-            let adj_rotor_index = self.rotor_index(reversed[i]) as i32 -1;
+        let mut cipher = cipher_af;
+
+        for rotor in self.rotor_labels.iter().rev() {
+            cipher = cipher_af.clone();
+            cipher_af = self.rotor_conv(rotor, cipher);
+            debug!("Rotor {} conversion: {} -> {}", &rotor, cipher, cipher_af);
+            cipher = cipher_af.clone();
+            let adj_rotor_index = self.rotor_index(&rotor) as i32 -1;
             if adj_rotor_index < 0 {
                 break;
             }
 
-            let adjacent_rotor = &rotor_labels[adj_rotor_index as usize];
+            let adjacent_rotor = &self.rotor_labels[adj_rotor_index as usize];
 
-            cipher = self.inter_rotor_conv(reversed[i], adjacent_rotor, cipher);
+            cipher_af = self.inter_rotor_conv(&rotor, adjacent_rotor, cipher);
+            debug!("Inter-Rotor {} to {} conversion: {} -> {}", &rotor, adjacent_rotor, cipher, cipher_af);
+            cipher = cipher_af.clone();
         }
 
-        cipher = self.reflector_conv(cipher);
+        cipher_af = self.reflector_conv(cipher);
+        debug!("Reflector conversion: {} -> {}", cipher, cipher_af);
+        cipher = cipher_af.clone();
 
-        for key in self.rotor_labels.clone() {
-            cipher = self.rotor_conv_inv(&key, cipher);
+        for rotor in self.rotor_labels.clone() {
+            cipher_af = self.rotor_conv_inv(&rotor, cipher);
+            debug!("Rotor {} conversion: {} -> {}", &rotor, cipher, cipher_af);
+            cipher = cipher_af.clone();
+            let adj_rotor_index = self.rotor_index(&rotor) as i32 + 1;
+            if adj_rotor_index >= self.rotor_labels.len() as i32 {
+                break;
+            }
+            let adjacent_rotor = &self.rotor_labels[adj_rotor_index as usize];
+            cipher_af = self.inter_rotor_conv(&rotor, adjacent_rotor, cipher);
+            debug!("Inter-Rotor {} to {} conversion: {} -> {}", &rotor, adjacent_rotor, cipher, cipher_af);
+            cipher = cipher_af.clone();
         }
 
-        self.plugboard_conv_inv(cipher)
+        cipher_af = self.plugboard_conv_inv(cipher);
+        debug!("Plugboard: {} -> {}", cipher, cipher_af);
+        debug!("--------------------");
+        cipher_af
     }
 
-    pub fn type_phrase(mut self, phrase: String) -> String {
+    pub fn type_phrase(&mut self, phrase: String) -> String {
+        let mut rng = rand::thread_rng();
         let mut temp = phrase.clone();
         temp.retain(|x| !x.is_whitespace());
 
         let remainder = if temp.len() % 5 != 0 {5 - temp.len() % 5} else {0};
 
+        for _i in 0..remainder {
+            temp.push(rotor::ALPHA[rng.gen_range(0..25) as usize]);
+        }
+
         let mut out_str: String = "".to_string();
-        
-        for i in 0..remainder {
+
+        for i in 0..temp.len() {
             let letter = temp.chars().nth(i).unwrap();
-            self.type_letter(letter);
-            out_str += &letter.to_string();
-            
+
+            out_str += &self.type_letter(letter).to_string();
+
             if i + 1 % 5 == 0 {
                 out_str += " ";
             }
         }
-
         out_str
     }
 
-    pub fn set_key(mut self, user_key: String) -> Self {
+    pub fn set_key(&mut self, user_key: String) {
         let labels = self.rotor_labels.clone();
         if labels.len() != user_key.len() {
             panic!("Key length must match no. of rotors.");
@@ -239,11 +277,10 @@ impl Enigma {
 
         let upper_k = user_key.to_ascii_uppercase();
 
-        for i in 0..upper_k.len() {
-            let letter = upper_k.chars().nth(i).unwrap();
-            self = self._set_rotor(&labels[i], letter);
+        for (rotor_dict_key, letter) in self.rotor_labels.clone().iter().zip(upper_k.chars()) {
+            let key = rotor_dict_key.clone();
+            self._set_rotor(&key.clone(), letter.clone());
         }
-        self
     }
 
     pub fn rewire_plugboard(mut self, letter_1: char, letter_2: char) {
@@ -253,18 +290,19 @@ impl Enigma {
 
 #[cfg(test)]
 mod tests {
+    #[test_log::test]
+    fn init() {
+        let _ = env_logger::builder().is_test(true).try_init();
+    }
     #[test]
     fn test_type_letter() {
         let rotor_list = vec![1, 2, 3, 4];
         let enigma_type = "M4".to_string();
         let reflector = 'B';
-        let mut letter = 'K';
+        let letter = 'K';
         let before = letter.clone();
-        let message = "This is a test".to_string().replace(" ", "").to_ascii_uppercase();
-        let rotor_labels = vec!["left", "middle left", "middle right", "right"];
         let mut machine_1 = super::Enigma::new(rotor_list.clone(), reflector, enigma_type.clone());
-        machine_1.type_letter(letter);
-        assert!(letter != before);
+        assert!(machine_1.type_letter(letter) != before);
     }
 
     #[test]
@@ -274,21 +312,12 @@ mod tests {
         let reflector = 'B';
         let key = "TEST".to_string();
         let message = "This is a test".to_string().replace(" ", "").to_ascii_uppercase();
-        let rotor_labels = vec!["left", "middle left", "middle right", "right"];
         let mut machine_1 = super::Enigma::new(rotor_list.clone(), reflector, enigma_type.clone());
-        let mut machine_2 = super::Enigma::new(rotor_list.clone(), reflector, enigma_type.clone());
-        
-        machine_1 = machine_1.set_key(key.clone());
-        machine_2 = machine_2.set_key(key.clone());
 
-        machine_1 = machine_1.ringstellung(rotor_list.clone());
-        machine_2 = machine_2.ringstellung(rotor_list.clone());
-
+        machine_1.set_key(key.clone());
+        machine_1.ringstellung(rotor_list.clone());
         let output = machine_1.type_phrase(message.clone()).replace(" ", "");
-        let output_2 = machine_2.type_phrase(message.clone());
 
-
-        println!("{}", output);
         assert!(&output[..output.len()-4] == "AIJYSDOZODD");
     }
 }

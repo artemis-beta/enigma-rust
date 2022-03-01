@@ -5,6 +5,15 @@ pub struct Reflector {
     name: char
 }
 
+impl Clone for Reflector {
+    fn clone(&self) -> Self {
+        Self {
+            conversions: self.conversions.clone(),
+            name: self.name.clone()
+        }
+    }
+}
+
 impl Reflector {
     pub fn convert(&self, letter: char) -> char {
         self.conversions[&letter]

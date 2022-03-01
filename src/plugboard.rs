@@ -4,6 +4,14 @@ pub struct Plugboard {
     conversions: HashMap<char, char>
 }
 
+impl Clone for Plugboard {
+    fn clone(&self) -> Self {
+        Self {
+            conversions: self.conversions.clone()
+        }
+    }
+}
+
 impl Plugboard {
     pub fn new() -> Self {
         Self {
@@ -26,10 +34,10 @@ impl Plugboard {
     }
 
     pub fn convert_inv(&self, letter: char) -> char {
-        for value in self.conversions.values() {
+        for (key, value) in &self.conversions {
             let output = &letter;
             if value == output {
-                return *output;
+                return key.clone();
             }
         }
 

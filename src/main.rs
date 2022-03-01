@@ -100,7 +100,7 @@ fn main() {
         let mut _temp = -1;
         println!("Set Number of Internal Wiring Rotation Increments for Each of the {} Rotors: ", rotors.len().to_string());
 
-        for i in 0..rotors.len() {
+        for _i in 0..rotors.len() {
             while _temp < 0 && !choice.chars().nth(0).unwrap().is_digit(10) {
                 println!("Rotation increments must be a positive integer: ");
                 std::io::stdin().read_line(&mut choice).unwrap();
@@ -116,7 +116,7 @@ fn main() {
         }
     }
     else {
-        for i in 0..rotors.len() {
+        for _i in 0..rotors.len() {
             rsg_settings.push(0);
         }
     }
@@ -129,8 +129,8 @@ fn main() {
         std::io::stdin().read_line(&mut choice).unwrap();
         if choice != "quit" {
             let mut enigma = enigma::Enigma::new(rotors.clone(), 'B', if key.clone().len() == 3 {"M3".to_string()} else {"M4".to_string()});
-            enigma = enigma.set_key(key.clone());
-            enigma = enigma.ringstellung(rsg_settings.clone());
+            enigma.set_key(key.clone());
+            enigma.ringstellung(rsg_settings.clone());
             let output = enigma.type_phrase(choice);
             println!("OUTPUT: {}", output);
             choice = "".to_string();

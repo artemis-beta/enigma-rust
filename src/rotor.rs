@@ -15,6 +15,7 @@ pub fn alpha_index(letter: char) -> usize {
     }
 }
 
+#[derive(Debug)]
 pub struct Rotor {
     notches: Vec<char>,
     wiring: HashMap<i32, i32>,
@@ -28,6 +29,17 @@ impl PartialEq for Rotor {
         (self.wiring == other.wiring) &&
         (self.face == other.face) &&
         (self.name == other.name)
+    }
+}
+
+impl Clone for Rotor {
+    fn clone(&self) -> Self {
+        Self {
+            notches: self.notches.clone(),
+            wiring: self.wiring.clone(),
+            face: self.face.clone(),
+            name: self.name.clone()
+        }
     }
 }
 
@@ -110,7 +122,7 @@ impl Rotor {
 			(21, 8), (22, 1), (23, 17),
 			(24, 2), (25, 9)
         ].iter().cloned().collect();
-        
+
         Self {
             name: "I".to_string(),
             notches: notches,
@@ -133,7 +145,7 @@ impl Rotor {
 			(21, 24), (22, 5), (23, 21),
 			(24, 14), (25, 4)
         ].iter().cloned().collect();
-        
+
         Self {
             name: "II".to_string(),
             notches: notches,
@@ -156,7 +168,7 @@ impl Rotor {
 			(21, 12), (22, 20), (23, 18),
 			(24, 16), (25, 14)
         ].iter().cloned().collect();
-        
+
         Self {
             name: "III".to_string(),
             notches: notches,
@@ -179,7 +191,7 @@ impl Rotor {
 			(21, 3), (22, 2), (23, 12),
 			(24, 22), (25, 1)
         ].iter().cloned().collect();
-        
+
         Self {
             name: "IV".to_string(),
             notches: notches,
@@ -202,7 +214,7 @@ impl Rotor {
             (21, 14), (22, 5), (23, 4),
             (24, 2), (25, 10)
         ].iter().cloned().collect();
-        
+
         Self {
             name: "V".to_string(),
             notches: notches,
@@ -226,7 +238,7 @@ impl Rotor {
             (21, 11), (22, 8), (23, 2),
             (24, 19), (25, 22)
         ].iter().cloned().collect();
-        
+
         Self {
             name: "VI".to_string(),
             notches: notches,
@@ -250,7 +262,7 @@ impl Rotor {
             (21, 4), (22, 10), (23, 16),
             (24, 3), (25, 19)
         ].iter().cloned().collect();
-        
+
         Self {
             name: "VII".to_string(),
             notches: notches,
@@ -274,7 +286,7 @@ impl Rotor {
             (21, 8), (22, 20), (23, 24),
             (24, 6), (25, 21)
         ].iter().cloned().collect();
-        
+
         Self {
             name: "VIII".to_string(),
             notches: notches,
@@ -334,7 +346,7 @@ mod tests {
 
         let output = [
             'A', 'J', 'D', 'K', 'S', 'I', 'R',
-            'U', 'X', 'B', 'L', 'H', 'W', 'T', 
+            'U', 'X', 'B', 'L', 'H', 'W', 'T',
             'M', 'C', 'Q', 'G', 'Z', 'N', 'P',
             'Y', 'F', 'V', 'O', 'E'
         ];
