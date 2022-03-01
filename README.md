@@ -1,4 +1,5 @@
 # Enigma
+[![Enigma](https://github.com/artemis-beta/enigma-rust/actions/workflows/rust.yml/badge.svg)](https://github.com/artemis-beta/enigma-rust/actions/workflows/rust.yml) [![codecov](https://codecov.io/gh/artemis-beta/enigma-rust/branch/main/graph/badge.svg?token=GnERsoET5s)](https://codecov.io/gh/artemis-beta/enigma-rust)
 
 This is a small application written in python which simulates both the M3 and M4, 3 and 4 rotor variants of the Enigma machine which was utilised by German forces during WWII to encode information.
 
