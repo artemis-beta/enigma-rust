@@ -1,4 +1,4 @@
-name: Rust
+name: Enigma
 
 on:
   push:
@@ -13,10 +13,29 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    container:
+      image: rust:latest
+      env:
+          DEBIAN_FRONTEND: noninteractive
 
     steps:
     - uses: actions/checkout@v2
+    - name : Install System Requirements
+      run  : apt update && apt upgrade -y && apt install -y build-essential cmake binutils-dev libcurl4-openssl-dev zlib1g-dev libdw-dev libiberty-dev
+    - name : Install kcov
+      run  : |
+        wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz
+        tar xzf master.tar.gz
+        cmake -Hkcov-master -Bkcov-master/build
+        cmake --build kcov-master/build
+        cmake --build kcov-master/build --target install
+        ls -ltr kcov-master/build/src
     - name: Build
-      run: cargo build --verbose
+      run: cargo test --no-run
     - name: Run tests
-      run: cargo test --verbose
+      run: |
+        TEST_EXE=$(ls $GITHUB_WORKSPACE/target/debug/deps/*.exe | xargs)
+        kcov --exclude-pattern=/.cargo,/usr/lib target/cov $TEST_EXE
+    - uses: codecov/codecov-action@v2
+      with:
+        env_vars: OS

@@ -9,7 +9,7 @@ mod plugboard;
 
 use std::collections::HashMap;
 use rand::Rng;
-use log::{debug, error, info, warn};
+use log::{debug};
 
 pub struct Enigma {
     enigma_type: String,
@@ -301,8 +301,48 @@ mod tests {
         let reflector = 'B';
         let letter = 'K';
         let before = letter.clone();
-        let mut machine_1 = super::Enigma::new(rotor_list.clone(), reflector, enigma_type.clone());
-        assert!(machine_1.type_letter(letter) != before);
+        let mut machine = super::Enigma::new(rotor_list.clone(), reflector, enigma_type.clone());
+        assert!(machine.type_letter(letter) != before);
+    }
+
+    #[test]
+    fn test_m3_encoding() {
+        let rotor_list = vec![4, 3, 2];
+        let enigma_type = "M3".to_string();
+        let reflector = 'C';
+        let key = "OUY".to_string();
+        let message = "NOBODYEXPECTSTHESPANISHINQUISITION";
+        let mut machine = super::Enigma::new(rotor_list.clone(), reflector, enigma_type.clone());
+
+        machine.set_key(key.clone());
+
+        let result = machine.type_phrase(message.to_string());
+
+        machine = super::Enigma::new(rotor_list.clone(), reflector, enigma_type.clone());
+        machine.set_key(key.clone());
+        let out = machine.type_phrase(result);
+
+        assert!(&out[..out.len()-1] == message);
+    }
+
+    #[test]
+    fn test_m4_encoding() {
+        let rotor_list = vec![4, 3, 2, 1];
+        let enigma_type = "M4".to_string();
+        let reflector = 'B';
+        let key = "MOAN".to_string();
+        let message = "SOTHATSCAPRICORNISIT";
+        let mut machine = super::Enigma::new(rotor_list.clone(), reflector, enigma_type.clone());
+
+        machine.set_key(key.clone());
+
+        let result = machine.type_phrase(message.to_string());
+
+        machine = super::Enigma::new(rotor_list.clone(), reflector, enigma_type.clone());
+        machine.set_key(key.clone());
+        let out = machine.type_phrase(result);
+
+        assert!(out == message);
     }
 
     #[test]
@@ -312,12 +352,16 @@ mod tests {
         let reflector = 'B';
         let key = "TEST".to_string();
         let message = "This is a test".to_string().replace(" ", "").to_ascii_uppercase();
-        let mut machine_1 = super::Enigma::new(rotor_list.clone(), reflector, enigma_type.clone());
+        let mut machine = super::Enigma::new(rotor_list.clone(), reflector, enigma_type.clone());
 
-        machine_1.set_key(key.clone());
-        machine_1.ringstellung(rotor_list.clone());
-        let output = machine_1.type_phrase(message.clone()).replace(" ", "");
+        machine.set_key(key.clone());
+        machine.ringstellung(rotor_list.clone());
+        let result = machine.type_phrase(message.clone()).replace(" ", "");
+        machine = super::Enigma::new(rotor_list.clone(), reflector, enigma_type.clone());
+        machine.set_key(key.clone());
+        machine.ringstellung(rotor_list.clone());
+        let orig = machine.type_phrase(result.clone()).replace(" ", "");
 
-        assert!(&output[..output.len()-4] == "AIJYSDOZODD");
+        assert!(&orig[..orig.len()-4] == message);
     }
 }
