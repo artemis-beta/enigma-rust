@@ -63,15 +63,22 @@ impl Rotor {
         self.notches.clone()
     }
 
+    fn _get_mutable_wiring_terminal(&mut self, terminal: &i32) -> &mut i32 {
+        match self.wiring.get_mut(terminal) {
+            Some(t) => return t,
+            None => panic!("Failed to retrieve terminal {}", terminal)
+        }
+    }
+
     // RINGSTELLUNG
     pub fn rotate_inner_ring(&mut self) {
         let x: i32 = self.wiring[&0];
         for i in 0..self.wiring.keys().len() {
             if i == 25 {
-                *self.wiring.get_mut(&(i as i32)).unwrap() = x;
+                *self._get_mutable_wiring_terminal(&(i as i32)) = x;
             }
             else {
-                *self.wiring.get_mut(&(i as i32)).unwrap() = self.wiring[&(i as i32+1)];
+                *self._get_mutable_wiring_terminal(&(i as i32)) = self.wiring[&(i as i32+1)];
             }
         }
     }

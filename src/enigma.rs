@@ -87,8 +87,18 @@ impl Enigma {
 
     }
 
-    pub fn get_rotor_labels(&self) -> Vec<String> {
-        self.rotor_labels.clone()
+    fn _get_rotor_at_position(&self, label: &String) -> &rotor::Rotor {
+        match self.rotors.get(label) {
+            Some(r) => return r,
+            None => panic!("Failed to retrieve rotor at position '{}' from rotor list", label)
+        }
+    }
+
+    fn _get_rotor_at_position_mut(&mut self, label: &String) -> &mut rotor::Rotor {
+        match self.rotors.get_mut(label) {
+            Some(r) => return r,
+            None => panic!("Failed to retrieve mutable reference to rotor at position '{}' from rotor list", label)
+        }
     }
 
     fn rotor_index(&self, label: &String) -> usize {
@@ -101,26 +111,30 @@ impl Enigma {
     fn _move_rotor(&mut self, rotor: &String, amount: i32) {
         for i in 0..amount {
             debug!("[{}] Rotating rotor {} by {}", i, rotor, amount);
-            self.rotors.get_mut(rotor).unwrap().rotate(None);
+
+            match self.rotors.get_mut(rotor) {
+                Some(r) => r.rotate(None),
+                None => panic!("Failed to retrieve rotor at position '{}' from rotor list", rotor)
+            }
         }
     }
 
     fn _set_rotor(&mut self, rotor: &String, letter: char) {
         debug!("Setting rotor {} to {}", rotor, letter);
-        let mut face = self.rotors.get(rotor).unwrap().get_face_letter();
+        let mut face = self._get_rotor_at_position(rotor).get_face_letter();
 
         while face  != letter {
             self._move_rotor(rotor, 1);
-            face = self.rotors.get(rotor).unwrap().get_face_letter();
+            face = self._get_rotor_at_position(rotor).get_face_letter();
         }
     }
 
     pub fn rotor_conv(&self, rotor: &String, letter: char) -> char {
-        self.rotors.get(rotor).unwrap().convert(letter)
+        self._get_rotor_at_position(rotor).convert(letter)
     }
 
     pub fn rotor_conv_inv(&self, rotor: &String, letter: char) -> char {
-        self.rotors.get(rotor).unwrap().convert_inv(letter)
+        self._get_rotor_at_position(rotor).convert_inv(letter)
     }
 
     pub fn reflector_conv(&self, letter: char) -> char {
@@ -137,8 +151,8 @@ impl Enigma {
 
     pub fn inter_rotor_conv(&self, rotor_1: &String, rotor_2: &String, letter: char) -> char {
         let terminal = rotor::alpha_index(letter);
-        let zero_point_1 = rotor::alpha_index(self.rotors.get(rotor_1).unwrap().get_face_letter());
-        let zero_point_2 = rotor::alpha_index(self.rotors.get(rotor_2).unwrap().get_face_letter());
+        let zero_point_1 = rotor::alpha_index(self._get_rotor_at_position(rotor_1).get_face_letter());
+        let zero_point_2 = rotor::alpha_index(self._get_rotor_at_position(rotor_2).get_face_letter());
         let interval = zero_point_2 as i32 - zero_point_1 as i32;
 
         let n;
@@ -159,7 +173,7 @@ impl Enigma {
 
     fn ringstellung_rotor_(&mut self, rotor: &String, amount: i32) {
         for _i in 0..amount {
-            self.rotors.get_mut(rotor).unwrap().rotate_inner_ring();
+            self._get_rotor_at_position_mut(rotor).rotate_inner_ring();
         }
     }
 
@@ -185,13 +199,19 @@ impl Enigma {
         let mut face_letters = HashMap::<String, char>::new();
 
         for rotor_label in self.rotor_labels.clone() {
-            notch_dict.insert(rotor_label.clone(), self.rotors.get(&rotor_label).unwrap().get_notches());
-            face_letters.insert(rotor_label.clone(), self.rotors.get(&rotor_label).unwrap().get_face_letter());
+            notch_dict.insert(rotor_label.clone(), self._get_rotor_at_position(&rotor_label).get_notches());
+            face_letters.insert(rotor_label.clone(), self._get_rotor_at_position(&rotor_label).get_face_letter());
         }
 
         for rotors in offset_1.iter().rev().zip(offset_2.iter().rev()) {
             let (rotor_1, rotor_2) = rotors;
-            let notches = notch_dict.get(&rotor_1.clone()).unwrap();
+            let notches;
+
+            match notch_dict.get(&rotor_1.clone()) {
+                Some(n) => notches = n,
+                None => panic!("Could not retrieve notch locations for rotor at position '{}'", rotor_1)
+            }
+
             for notch in notches {
                 if face_letters[&rotor_1.clone()] == *notch {
                     self._move_rotor(&rotor_2.clone(), 1);
@@ -258,7 +278,13 @@ impl Enigma {
         let mut out_str: String = "".to_string();
 
         for i in 0..temp.len() {
-            let letter = temp.chars().nth(i).unwrap();
+            let letter;
+
+            match temp.chars().nth(i) {
+                Some(l) => letter = l,
+                None => panic!(
+                    "Could not retrieve letter at position '{}' of modified phrase string '{}'", i, temp)
+            }
 
             out_str += &self.type_letter(letter).to_string();
 

@@ -44,12 +44,19 @@ impl Plugboard {
         panic!("Could find inverse conversion of character '{}'", letter);
     }
 
+    fn _get_mutable_conversion_for_key(&mut self, letter: &char) -> &mut char {
+        match self.conversions.get_mut(letter) {
+            Some(c) => return c,
+            None => panic!("Failed to retrieve conversion for letter '{}'", letter)
+        }
+    }
+
     pub fn swap_letter_wiring(mut self, letter_1: char, letter_2: char) {
         let init_1: char = self.convert(letter_1);
         let init_2: char = self.convert(letter_2);
-        *self.conversions.get_mut(&letter_1).unwrap() = letter_2;
-        *self.conversions.get_mut(&letter_2).unwrap() = letter_1;
-        *self.conversions.get_mut(&init_2).unwrap() = init_1;
-        *self.conversions.get_mut(&init_1).unwrap() = init_2;
+        *self._get_mutable_conversion_for_key(&letter_1) = letter_2;
+        *self._get_mutable_conversion_for_key(&letter_2) = letter_1;
+        *self._get_mutable_conversion_for_key(&init_2) = init_1;
+        *self._get_mutable_conversion_for_key(&init_1) = init_2;
     }
 }
